@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>商品管理</title>
+<link rel="stylesheet" href="./layui/css/layui.css">
+</head>
+
+<body>
+	<div style="width: 100px; float: left;">
+		<button id="addBtn" class="layui-btn">添加商品</button>
+	</div>
+	<div style="float: right;">
+		<input type="text" class="layui-input" id="search-data"
+			style="width: 240px; float: right; margin-right: 200px" />
+		<button class="layui-btn" id="search-btn"
+			style="float: right; margin-right: -350px">搜索</button>
+	</div>
+	<div style="padding-top: 10px;">
+		<table class="layui-table" id="productTable">
+			<thead>
+				<tr>
+					<th>是否热门</th>
+					<th>市场价</th>
+					<th>日期</th>
+					<th>描述</th>
+					<th>图片</th>
+					<th>商品名称</th>
+					<th>商品分类</th>
+					<th>销售价</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+
+	<!-- 分页 -->
+	<div id="pagination" class="layui-row"></div>
+
+	<!-- 表单 -->
+	<!-- 弹出层内容 -->
+	<div id="addForm" style="display: none;" >
+		<form class="layui-form" action="">
+			<input type="text" name="pid" style="display: none;"> <input
+				type="text" name="pimage" style="display: none;">
+				<input type="text" id="imagePath" name="pimage" style="display: none;">
+				
+			<div class="layui-form-item">
+				<label class="layui-form-label">选择框</label>
+				<div class="layui-input-block">
+					<select name="cid" lay-verify="required" id="categorySelect">
+
+					</select>
+				</div>
+			</div>
+			<div class="layui-form-item">
+				<label class="layui-form-label">商品名称</label>
+				<div class="layui-input-block">
+					<input type="text" name="pname" required lay-verify="required"
+						placeholder="请输入商品名称" autocomplete="off" class="layui-input">
+				</div>
+			</div>
+			<div class="layui-form-item">
+				<label class="layui-form-label">商品图片</label>
+				<div class="layui-input-block">
+					<button type="button" class="layui-btn" id="uploadImage">
+						<i class="layui-icon">&#xe67c;</i>上传图片
+					</button>
+					<img id="previewImage" src=""
+						style="max-width: 100px; max-height: 100px; margin-left: 20px;">
+				</div>
+			</div>
+			<div class="layui-form-item">
+				<label class="layui-form-label">市场价</label>
+				<div class="layui-input-block">
+					<input type="number" name="market_price" required
+						lay-verify="required" placeholder="请输入市场价" autocomplete="off"
+						class="layui-input">
+				</div>
+			</div>
+			<div class="layui-form-item">
+				<label class="layui-form-label">销售价</label>
+				<div class="layui-input-block">
+					<input type="" number"" name="shop_price" required
+						lay-verify="required" placeholder="请输入销售价" autocomplete="off"
+						class="layui-input">
+				</div>
+			</div>
+			<div class="layui-form-item layui-form-text">
+				<label class="layui-form-label">商品描述</label>
+				<div class="layui-input-block">
+					<textarea name="pdesc" placeholder="请输入商品描述" class="layui-textarea"></textarea>
+				</div>
+			</div>
+			<div class="layui-form-item">
+				<label class="layui-form-label">是否热门</label>
+				<div class="layui-input-block">
+					<input type="radio" name="is_hot" value="1" title="是"> <input
+						type="radio" name="is_hot" value="0" title="否" checked>
+				</div>
+			</div>
+
+			<div class="layui-form-item">
+				<div class="layui-input-block">
+					<button class="layui-btn" lay-submit lay-filter="submitForm">提交</button>
+				</div>
+			</div>
+		</form>
+	</div>
+
+</body>
+<script type="text/javascript" src="./layui/jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="./layui/layui.js"></script>
+<script>
+	pname = "";
+	categoryList = []
+	baseUrl = ""
+	page = 1
+	size = 10
+	$(function() {
+		// 弹出层 显示表单
+		layui.use([ 'laypage', 'layer', 'form' ], function() {
+			var layer = layui.layer;
+			var form = layui.form;
+			 
+			// 这里定义全局变量，以便在其他地方使用
+	        window.laypage = layui.laypage;
+	     
+			
+	      	// 查询类别列表
+			getCategoryList();
+	      	
+	      	// 查询商品列表
+	        getProductList(page,size);
+	        
+	        
+	     	// 绑定修改按钮点击事件
+			$("#search-btn").click(function() {
+				pname = $('#search-data').val();
+				getProductList(page,size);
+			});
+	        
+			$("#addBtn").click(function() {
+				 clearForm();
+				layer.open({
+					type : 1,
+					content : $('#addForm'), //这里content是一个普通的String
+					area : [ '700px', '500px' ],
+					success:function(layero, index){
+						// 获取<select>元素
+						var $select = $('#categorySelect');
+
+						// 清空<select>中的现有<option>项
+						$select.empty();
+
+						// 添加“请选择”选项 
+						var $defaultOption = $('<option>').val("").text("请选择");
+						$select.append($defaultOption);
+						// 遍历数据并添加<option>项
+						$.each(categoryList, function(index, item) {
+							var $option = $('<option>').val(item.cid).text(item.cname);
+							console.log(item)
+							$select.append($option);
+						});
+						
+						// 手动触发 change 事件，以确保 UI 更新
+						layui.form.render('select');
+					}
+					
+				});
+				
+				
+				
+			})
+			 // 使用事件委托来绑定删除事件
+	        $("#productTable").on("click", ".delete-btn", function() {
+	        	var pid = $(this).data("id");
+				console.log(pid);
+
+				// 弹出确认删除提示框
+				layer.confirm('确定要删除吗？', {
+					btn : [ '确定', '取消' ]
+				// 按钮
+				}, function(index) {
+					// 点击确定按钮后的操作
+					deleteByPid(pid).then(function(res) {
+						console.log(res)
+						if (res.code > 0) {
+							// 处理响应
+							layer.msg("删除成功");
+
+							// 查询商品列表
+							getProductList(page,size);
+						} else {
+							// 处理响应
+							layer.msg("删除失败");
+						}
+					})
+					layer.close(index); // 关闭确认框
+				}, function() {
+					// 点击取消按钮后的操作
+					layer.msg('取消删除');
+				});
+	        });
+			// 绑定修改按钮点击事件 委托
+	        $("#productTable").on("click", ".modify-btn", function() {
+	        	var pid = $(this).data("id");
+				// 查询详情
+				detail(pid).then(function(data) {
+					layer.open({
+						type : 1,
+						content : $('#addForm'), //这里content是一个普通的String
+						area : [ '700px', '500px' ],
+						success : function(layero, index) {
+							// 填充表单数据
+							/*  populateForm(form,data); */
+							// 使用 setTimeout 延迟执行 populateForm
+							populateForm(layui, form, data);
+						}
+					});
+				})
+	        });
+
+			//监听提交 
+			form.on('submit(submitForm)', function(data) {
+				
+				
+				 // 获取图片路径
+                var imagePath = $('#imagePath').val();
+
+                // 检查是否选择了图片
+                if (!imagePath) {
+                    layer.msg('请先选择图片');
+                    return false;
+                }
+				
+
+				if (data.field.pid != '') {
+					// 修改
+
+					$.ajax({
+						type : "POST",
+						contentType : "application/json; charset=UTF-8",
+						url : "/shop/product/update", // 替换为你的Servlet的URL
+						data : data.field,
+						dataType : 'json', // 返回值类型， json、text等
+						success : function(res) {
+							if (res.code > 0) {
+								// 处理响应
+								layer.msg("提交成功");
+								// 关闭弹出层
+								layer.closeAll();
+								// 查询商品列表
+								getProductList(page,size);
+							} else {
+								// 处理响应
+								layer.msg("提交失败");
+							}
+
+						},
+						error : function() {
+							layer.msg("提交失败");
+						}
+					});
+
+					return false;
+				}
+
+				// 新增
+
+				$.ajax({
+					type : "POST",
+					contentType : "application/json; charset=UTF-8",
+					url : "/shop/product/add", // 替换为你的Servlet的URL
+					data : data.field,
+					dataType : 'json', // 返回值类型， json、text等
+					success : function(res) {
+						if (res.code > 0) {
+							// 处理响应
+							layer.msg("提交成功");
+							// 关闭弹出层
+							layer.closeAll();
+							// 查询商品列表
+							getProductList(page,size);
+						} else {
+							// 处理响应
+							layer.msg("提交失败");
+						}
+
+					},
+					error : function() {
+						layer.msg("提交失败");
+					}
+				});
+
+				return false;
+			});
+
+		});
+		
+		
+
+	})
+
+	
+	// 清空表单的函数
+	function clearForm() {
+		
+		// 字段的清空...
+	    $('input[name="pid"]').val('');
+	    $('input[name="pimage"]').val('');
+	    $('input[name="pname"]').val('');
+	    $('input[name="market_price"]').val('');
+	    $('input[name="shop_price"]').val('');
+	    $('textarea[name="pdesc"]').val('');
+	    $('input[name="is_hot"]').prop('checked', false);
+	    
+	    
+	    // 清空图片预览
+	    $('#previewImage').attr('src', '');
+	    
+	    // 手动触发 layui.form.render()，以确保 UI 更新
+	    layui.use(['form'], function() {
+	        var form = layui.form;
+	        form.render();
+	    });
+	}
+	
+	// 查询类别列表
+	function getCategoryList() {
+		$.ajax({
+			url : "/shop/category/list",
+			contentType : "application/json; charset=UTF-8",
+			type : 'get',
+			dataType : 'json',
+			success : function(res) {
+
+				categoryList = res.list
+				
+			},
+			error : function(xhr, errorMessage, e) {
+				alert(errorMessage);
+			}
+		})
+	}
+
+	// 根据id删除
+	function deleteByPid(pid) {
+
+		return new Promise(function(resolve, reject) {
+			$.ajax({
+				type : "POST",
+				url : "/shop/product/delete?pid=" + pid,
+				contentType : "application/json; charset=UTF-8",
+				dataType : 'json',
+				success : function(res) {
+					resolve(res);
+				},
+				error : function(xhr, errorMessage, e) {
+					reject(errorMessage);
+				}
+			});
+		})
+	}
+
+	// 查询单个详情
+	function detail(pid) {
+
+		return new Promise(function(resolve, reject) {
+			$.ajax({
+				url : "/shop/product/detail?pid=" + pid,
+				contentType : "application/json; charset=UTF-8",
+				type : 'get',
+				dataType : 'json',
+				success : function(res) {
+					resolve(res.data);
+				},
+				error : function(xhr, errorMessage, e) {
+					reject(errorMessage);
+				}
+			});
+		})
+
+		/* $.ajax({
+			url : "/shop/product/detail?pid="+pid,
+			contentType : "application/json; charset=UTF-8",
+			type : 'get',
+			dataType : 'json',
+			success : function(res) {
+				
+				return res.data;
+				
+				
+			},
+			error : function(xhr, errorMessage, e) {
+				alert(errorMessage);
+			}
+		}) */
+	}
+
+	// 查询商品列表
+	function getProductList(page,size) {
+		$
+				.ajax({
+					url : "/shop/product/list?page="+page+"&size="+size, // 请求的地址，即要给那里发送请求
+					contentType : "application/json; charset=UTF-8",
+					data : { // 请求参数，有多个时以逗号分
+						pname : pname
+					},
+					type : 'post', // 请求方式，get、post
+					dataType : 'json', // 返回值类型， json、text等
+					success : function(res) { // 请求成功执行此方法，res为返回值，名称自定义
+						initPagination(res.total)
+						baseUrl = res.baseURL
+						var productList = res.list;
+						var tableBody = $("#productTable tbody");
+						tableBody.empty(); // 清空表格
+						productList
+								.forEach(function(product) {
+
+									var is_hot = "是";
+									if (product.is_hot != 1) {
+										is_hot = "否";
+									}
+									
+									
+									var imageUrl = product.pimage
+									if(imageUrl.indexOf("http") == -1){
+										imageUrl = res.baseURL+product.pimage
+									}
+
+									var row = "<tr>" + "<td>"
+											+ is_hot
+											+ "</td>"
+											+ "<td>"
+											+ product.market_price
+											+ "</td>"
+											+ "<td>"
+											+ new Date(product.pdate)
+													.toLocaleDateString()
+											+ "</td>"
+											+ "<td>"
+											+ product.pdesc
+											+ "</td>"
+											+
+
+											"<td><img src='" + imageUrl + "' alt='Product Image' width='50'></td>"
+											+ "<td>"
+											+ product.pname
+											+ "</td>"
+											+ "<td>"
+											+ product.cname
+											+ "</td>"
+											+ "<td>"
+											+ product.shop_price
+											+ "</td>"
+											+ "<td>"
+											+ "<button class='layui-btn layui-btn-xs modify-btn' data-id='" + product.pid + "'>修改</button>"
+											+ "<button class='layui-btn layui-btn-danger layui-btn-xs delete-btn' data-id='" + product.pid + "'>删除</button>"
+											+ "</td>" + "</tr>";
+									tableBody.append(row);
+								});
+
+					},
+					error : function(xhr, errorMessage, e) { //请求异常执行此方法，参数名不建议修改,可以不写这个函数
+						alert(errorMessage);
+					}
+				})
+	}
+	
+	
+  
+	
+
+	function populateForm(layui, form, data) {
+		// 假设从服务器获取的分类数据
+
+		var $select = $('#categorySelect');
+		// 清空<select>中的现有<option>项
+
+		$select.empty();
+		// 添加“请选择”选项 
+		var $defaultOption = $('<option>').val("").text("请选择");
+		$select.append($defaultOption);
+
+		categoryList.forEach(function(category) {
+			var $option = $('<option>').val(category.cid).text(category.cname);
+
+			if (category.cid == data.cid) {
+				console.log()
+				/* $option.prop("selected",true); */
+				$option.prop("selected", true);
+				/* $option[0].selected = true; */// 使用原生 JavaScript 方法
+			}
+			$select.append($option);
+
+		});
+
+		// 填充其他字段
+		$('input[name="pid"]').val(data.pid);
+		$('input[name="pimage"]').val(data.pimage);
+		$('input[name="pname"]').val(data.pname);
+		$('input[name="market_price"]').val(data.market_price);
+		$('input[name="shop_price"]').val(data.shop_price);
+		$('textarea[name="pdesc"]').val(data.pdesc);
+		$('input[name="is_hot"][value="' + data.is_hot + '"]').prop('checked',
+				true);
+		
+
+		var imageUrl = data.pimage
+		if(imageUrl.indexOf("http") == -1){
+			imageUrl = baseUrl+data.pimage
+		}
+		
+		$('#previewImage').attr('src', imageUrl)
+		// 手动触发 change 事件，以确保 UI 更新
+		layui.form.render('select');
+		layui.form.render('radio');
+		$select.trigger('change');
+	}
+
+	
+	
+	  // 初始化分页组件函数
+    function initPagination(total) {
+        window.laypage.render({
+            elem: 'pagination',
+            count: total, // 总记录数
+            limit: size,
+            curr: page,
+            layout: ['count', 'prev', 'page', 'next', 'limit', 'refresh', 'skip'],
+            jump: function(obj, first) {
+                // obj包含了当前分页的所有参数，比如：
+                // obj.curr 当前页, obj.limit 每页数据量
+
+                // 首次不执行
+                if (!first) {
+                	page = obj.curr
+                	size = obj.limit
+                    // 根据当前页和每页数据量加载数据
+                    getProductList(page, size);
+                }
+            }
+        });
+    }
+
+	// 上传图片
+	layui.use('upload', function() {
+		var upload = layui.upload;
+
+		//执行实例
+		var uploadInst = upload.render({
+			elem : '#uploadImage' //绑定元素
+			,
+			url : '/shop/product/upload' //上传接口
+			,
+			done : function(res) {
+				if(res.success){
+					// 设置图片预览
+                    $('#previewImage').attr('src', res.imageUrl);
+					
+                    // 将图片路径设置到隐藏输入字段
+                    $('#imagePath').val(res.imageUrl);
+				}
+			},
+			error : function() {
+				//请求异常回调
+			}
+		});
+	});
+</script>
+</html>

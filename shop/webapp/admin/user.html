@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>用户管理</title>
+<link rel="stylesheet" href="./layui/css/layui.css">
+</head>
+
+<body>
+	
+	<div style="float: right;">
+		<input type="text" class="layui-input" id="search-data"
+			style="width: 240px; float: right; margin-right: 200px" />
+		<button class="layui-btn" id="search-btn"
+			style="float: right; margin-right: -350px">搜索</button>
+	</div>
+	<div style="padding-top: 10px;">
+		<table class="layui-table" id="userTable">
+			<thead>
+				<tr>
+					<th>账号</th>
+					<th>用户名称</th>
+					<th>邮箱</th>
+					<th>电话</th>
+					<th>出生日期</th>
+					<th>性别</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+
+	<!-- 分页 -->
+	<div id="pagination" class="layui-row"></div>
+
+
+
+</body>
+<script type="text/javascript" src="./layui/jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="./layui/layui.js"></script>
+<script>
+	name = "";
+	userList = []
+	page = 1
+	size = 10
+	$(function() {
+		// 弹出层 显示表单
+		layui.use([ 'laypage', 'layer'], function() {
+			var layer = layui.layer;
+			 
+			// 这里定义全局变量，以便在其他地方使用
+	        window.laypage = layui.laypage;
+			
+	      	// 查询类别列表
+	        getUserList(page,size);
+	        
+	        
+	     	// 绑定搜索按钮点击事件
+			$("#search-btn").click(function() {
+				name = $('#search-data').val();
+				getUserList(page,size);
+			});
+			
+			 // 使用事件委托来绑定删除事件
+	        $("#userTable").on("click", ".delete-btn", function() {
+	            var uid = $(this).data("id");
+	            console.log(uid);
+	            // 弹出确认删除提示框
+	            layer.confirm('确定要删除吗？', {
+	                btn: ['确定', '取消'] // 按钮
+	            }, function(index) {
+	                // 点击确定按钮后的操作
+	                deleteByUid(uid).then(function(res) {
+	                    console.log(res);
+	                    if (res.code > 0) {
+	                        // 处理响应
+	                        layer.msg("删除成功");
+	                        // 查询类别列表
+	                        getUserList(page, size);
+	                    } else {
+	                        // 处理响应
+	                        layer.msg("删除失败");
+	                    }
+	                });
+	                layer.close(index); // 关闭确认框
+	            }, function() {
+	                // 点击取消按钮后的操作
+	                layer.msg('取消删除');
+	            });
+	        });
+
+		});
+		
+		
+		
+		
+
+	})
+	
+	
+
+
+
+	// 根据id删除
+	function deleteByUid(uid) {
+
+		return new Promise(function(resolve, reject) {
+			$.ajax({
+				type : "POST",
+				url : "/shop/user/delete?uid=" + uid,
+				contentType : "application/json; charset=UTF-8",
+				dataType : 'json',
+				success : function(res) {
+					resolve(res);
+				},
+				error : function(xhr, errorMessage, e) {
+					reject(errorMessage);
+				}
+			});
+		})
+	}
+
+	// 查询用户列表
+	function getUserList(page,size) {
+		$
+				.ajax({
+					url : "/shop/user/userList?page="+page+"&size="+size, // 请求的地址，即要给那里发送请求
+					contentType : "application/json; charset=UTF-8",
+					data : { // 请求参数，有多个时以逗号分
+						name : name
+					},
+					type : 'post', // 请求方式，get、post
+					dataType : 'json', // 返回值类型， json、text等
+					success : function(res) { // 请求成功执行此方法，res为返回值，名称自定义
+						initPagination(res.total)
+						var userList = res.list;
+						var tableBody = $("#userTable tbody");
+						tableBody.empty(); // 清空表格
+						userList
+								.forEach(function(user) {
+
+									
+
+									var row = "<tr>" 
+											+ "<td>"
+											+ user.username
+											+ "</td>"
+											+ "<td>"
+											+ user.name
+											+ "</td>"
+											+ "<td>"
+											+ user.email
+											+ "</td>"
+											+ "<td>"
+											+ user.telephone
+											+ "</td>"
+											+ "<td>"
+											+ new Date(user.birthday)
+											.toLocaleDateString()
+											+ "</td>"
+											+ "<td>"
+											+ user.sex
+											+ "</td>"
+										
+											+ "<td>"
+											+ "<button class='layui-btn layui-btn-danger layui-btn-xs delete-btn' data-id='" + user.uid + "'>删除</button>"
+											+ "</td>" + "</tr>";
+									tableBody.append(row);
+								});
+						
+						
+						
+						
+						
+						
+						
+
+					},
+					error : function(xhr, errorMessage, e) { //请求异常执行此方法，参数名不建议修改,可以不写这个函数
+						alert(errorMessage);
+					}
+				})
+	}
+	
+	
+  
+	
+
+	
+
+	
+	
+	  // 初始化分页组件函数
+    function initPagination(total) {
+        window.laypage.render({
+            elem: 'pagination',
+            count: total, // 总记录数
+            limit: size,
+            curr: page,
+            layout: ['count', 'prev', 'page', 'next', 'limit', 'refresh', 'skip'],
+            jump: function(obj, first) {
+                // obj包含了当前分页的所有参数，比如：
+                // obj.curr 当前页, obj.limit 每页数据量
+
+                // 首次不执行
+                if (!first) {
+                	page = obj.curr
+                	size = obj.limit
+                    // 根据当前页和每页数据量加载数据
+                    getUserList(page, size);
+                }
+            }
+        });
+    }
+</script>
+</html>

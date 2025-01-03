@@ -1,0 +1,87 @@
+shop memo
+
+----------------------------------------
+代码修正
+
+web.xml
+
+<location>C:/workspaces/Java/Servlet_JSP/Shop-Servlet-JSP/shop/webapp/products/1</location>
+
+<param-value>C:/workspaces/Java/Servlet_JSP/Shop-Servlet-JSP/shop/webapp/products/1</param-value>
+
+
+ProductServlet.java
+
+imageUrl ="/shop/products/1/"+newFileName;
+
+----------------------------------------
+通过source命令执行sql文件
+
+source C:\Users\youko\Downloads\TEMP\htShop-master\sql\shop.sql
+
+----------------------------------------
+table name
+
+admin
+category
+orderitem
+orders
+product
+user
+
+----------------------------------------
+drop table
+
+DROP table admin;
+DROP table category;
+DROP table orderitem;
+DROP table orders;
+DROP table product;
+DROP table user;
+
+----------------------------------------
+商城前台购物系统
+http://localhost:8080/shop/login.jsp
+
+商城后台管理系统
+http://localhost:8080/shop/admin/login.html
+
+----------------------------------------
+-- 每个订单的总金额
+SELECT
+  u.username                                      -- 用户名
+  , p.pname                                       -- 商品名
+  , o.address                                     -- 订单地址
+  , o.telephone                                   -- 订单电话
+  , SUM(i.subtotal) AS total_subtotal             -- 每个订单的总金额
+FROM
+  user u 
+  LEFT JOIN orders o 
+    ON u.uid = o.uid 
+  LEFT JOIN orderitem i 
+    ON o.oid = i.oid 
+  LEFT JOIN product p 
+    ON p.pid = i.pid 
+GROUP BY
+  u.username                                      -- 按用户名分组
+  , p.pname                                       -- 按商品名分组
+  , o.address                                     -- 按地址分组
+  , o.telephone;                                  -- 按电话分组
+
+
+-- 订单的总金额
+SELECT
+  u.username                                      -- 用户名
+  , SUM(i.subtotal) AS total_subtotal             -- 订单的总金额
+FROM
+  user u 
+  LEFT JOIN orders o 
+    ON u.uid = o.uid 
+  LEFT JOIN orderitem i 
+    ON o.oid = i.oid 
+GROUP BY
+  u.username;                                     -- 按用户名分组
+
+----------------------------------------
+
+

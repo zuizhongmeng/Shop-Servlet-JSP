@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title></title>
+<link rel="stylesheet" href="./layui/css/layui.css">
+</head>
+
+<body>
+	<div style="width: 100px; float: left;">
+		<button id="addBtn" class="layui-btn">添加类别</button>
+	</div>
+	<div style="float: right;">
+		<input type="text" class="layui-input" id="search-data"
+			style="width: 240px; float: right; margin-right: 200px" />
+		<button class="layui-btn" id="search-btn"
+			style="float: right; margin-right: -350px">搜索</button>
+	</div>
+	<div style="padding-top: 10px;">
+		<table class="layui-table" id="categoryTable">
+			<thead>
+				<tr>
+					<th>类别名称</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+
+	<!-- 分页 -->
+	<div id="pagination" class="layui-row"></div>
+
+	<!-- 表单 -->
+	<!-- 弹出层内容 -->
+	<div id="addForm" style="display: none;">
+		<form class="layui-form" action="">
+			<input type="text" name="cid" style="display: none;"> 
+
+			<div class="layui-form-item">
+				<label class="layui-form-label">类别名称</label>
+				<div class="layui-input-block">
+					<input type="text" name="cname" required lay-verify="required"
+						placeholder="请输入类别名称" autocomplete="off" class="layui-input">
+				</div>
+			</div>
+			
+
+			<div class="layui-form-item">
+				<div class="layui-input-block">
+					<button class="layui-btn" lay-submit lay-filter="submitForm">提交</button>
+				</div>
+			</div>
+		</form>
+	</div>
+
+</body>
+<script type="text/javascript" src="./layui/jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="./layui/layui.js"></script>
+<script>
+	cname = "";
+	categoryList = []
+	baseUrl = ""
+	page = 1
+	size = 10
+	$(function() {
+		// 弹出层 显示表单
+		layui.use([ 'laypage', 'layer', 'form' ], function() {
+			var layer = layui.layer;
+			var form = layui.form;
+			 
+			// 这里定义全局变量，以便在其他地方使用
+	        window.laypage = layui.laypage;
+			
+	      	// 查询类别列表
+	        getCategoryList(page,size);
+	        
+	        
+	     	// 绑定搜索按钮点击事件
+			$("#search-btn").click(function() {
+				cname = $('#search-data').val();
+				getCategoryList(page,size);
+			});
+	        
+			$("#addBtn").click(function() {
+				clearForm();
+				layer.open({
+					type : 1,
+					content : $('#addForm'), //这里content是一个普通的String
+					area : [ '700px', '500px' ]
+				});
+			})
+			
+			 // 使用事件委托来绑定删除事件
+	        $("#categoryTable").on("click", ".delete-btn", function() {
+	            var cid = $(this).data("id");
+	            console.log(cid);
+	            // 弹出确认删除提示框
+	            layer.confirm('确定要删除吗？', {
+	                btn: ['确定', '取消'] // 按钮
+	            }, function(index) {
+	                // 点击确定按钮后的操作
+	                deleteByCid(cid).then(function(res) {
+	                    console.log(res);
+	                    if (res.code > 0) {
+	                        // 处理响应
+	                        layer.msg("删除成功");
+	                        // 查询类别列表
+	                        getCategoryList(page, size);
+	                    } else {
+	                        // 处理响应
+	                        layer.msg("删除失败");
+	                    }
+	                });
+	                layer.close(index); // 关闭确认框
+	            }, function() {
+	                // 点击取消按钮后的操作
+	                layer.msg('取消删除');
+	            });
+	        });
+			
+			// 绑定修改按钮点击事件 委托
+	        $("#categoryTable").on("click", ".modify-btn", function() {
+	        	var cid = $(this).data("id");
+				// 查询详情
+				detail(cid).then(function(data) {
+					layer.open({
+						type : 1,
+						content : $('#addForm'), //这里content是一个普通的String
+						area : [ '700px', '500px' ],
+						success : function(layero, index) {
+							$('input[name="cname"]').val(data.cname);
+							$('input[name="cid"]').val(data.cid);
+							
+						}
+					});
+				})
+	        });
+
+			//监听提交 
+			form.on('submit(submitForm)', function(data) {
+				
+				if (data.field.cid != '') {
+					// 修改
+
+					$.ajax({
+						type : "POST",
+						contentType : "application/json; charset=UTF-8",
+						url : "/shop/category/update", // 替换为你的Servlet的URL
+						data : data.field,
+						dataType : 'json', // 返回值类型， json、text等
+						success : function(res) {
+							if (res.code > 0) {
+								// 处理响应
+								layer.msg("提交成功");
+								// 关闭弹出层
+								layer.closeAll();
+								// 查询商品列表
+								getCategoryList(page,size);
+							} else {
+								// 处理响应
+								layer.msg("提交失败");
+							}
+
+						},
+						error : function() {
+							layer.msg("提交失败");
+						}
+					});
+
+					return false;
+				}
+
+				// 新增
+
+				$.ajax({
+					type : "POST",
+					contentType : "application/json; charset=UTF-8",
+					url : "/shop/category/add", // 替换为你的Servlet的URL
+					data : data.field,
+					dataType : 'json', // 返回值类型， json、text等
+					success : function(res) {
+						if (res.code > 0) {
+							// 处理响应
+							layer.msg("提交成功");
+							// 关闭弹出层
+							layer.closeAll();
+							// 查询商品列表
+							getCategoryList(page,size);
+						} else {
+							// 处理响应
+							layer.msg("提交失败");
+						}
+
+					},
+					error : function() {
+						layer.msg("提交失败");
+					}
+				});
+
+				return false;
+			});
+
+		});
+		
+		
+		
+		
+
+	})
+	
+	// 清空表单的函数
+	function clearForm() {
+		
+		// 字段的清空...
+	    $('input[name="cname"]').val('');
+		$('input[name="cid"]').val('');
+	    
+	    // 手动触发 layui.form.render()，以确保 UI 更新
+	    layui.use(['form'], function() {
+	        var form = layui.form;
+	        form.render();
+	    });
+	}
+
+
+
+	// 根据id删除
+	function deleteByCid(cid) {
+
+		return new Promise(function(resolve, reject) {
+			$.ajax({
+				type : "POST",
+				url : "/shop/category/delete?cid=" + cid,
+				contentType : "application/json; charset=UTF-8",
+				dataType : 'json',
+				success : function(res) {
+					resolve(res);
+				},
+				error : function(xhr, errorMessage, e) {
+					reject(errorMessage);
+				}
+			});
+		})
+	}
+
+	// 查询单个详情
+	function detail(cid) {
+
+		return new Promise(function(resolve, reject) {
+			$.ajax({
+				url : "/shop/category/detail?cid=" + cid,
+				contentType : "application/json; charset=UTF-8",
+				type : 'get',
+				dataType : 'json',
+				success : function(res) {
+					resolve(res.data);
+				},
+				error : function(xhr, errorMessage, e) {
+					reject(errorMessage);
+				}
+			});
+		})
+	}
+
+	// 查询类别列表
+	function getCategoryList(page,size) {
+		$
+				.ajax({
+					url : "/shop/category/categoryList?page="+page+"&size="+size, // 请求的地址，即要给那里发送请求
+					contentType : "application/json; charset=UTF-8",
+					data : { // 请求参数，有多个时以逗号分
+						cname : cname
+					},
+					type : 'post', // 请求方式，get、post
+					dataType : 'json', // 返回值类型， json、text等
+					success : function(res) { // 请求成功执行此方法，res为返回值，名称自定义
+						initPagination(res.total)
+						baseUrl = res.baseURL
+						var categoryList = res.list;
+						var tableBody = $("#categoryTable tbody");
+						tableBody.empty(); // 清空表格
+						categoryList
+								.forEach(function(category) {
+
+									
+
+									var row = "<tr>" 
+											+ "<td>"
+											+ category.cname
+											+ "</td>"
+										
+											+ "<td>"
+											+ "<button class='layui-btn layui-btn-xs modify-btn' data-id='" + category.cid + "'>修改</button>"
+											+ "<button class='layui-btn layui-btn-danger layui-btn-xs delete-btn' data-id='" + category.cid + "'>删除</button>"
+											+ "</td>" + "</tr>";
+									tableBody.append(row);
+								});
+						
+						
+						
+						
+						
+						
+						
+
+					},
+					error : function(xhr, errorMessage, e) { //请求异常执行此方法，参数名不建议修改,可以不写这个函数
+						alert(errorMessage);
+					}
+				})
+	}
+	
+	
+  
+	
+
+	
+
+	
+	
+	  // 初始化分页组件函数
+    function initPagination(total) {
+        window.laypage.render({
+            elem: 'pagination',
+            count: total, // 总记录数
+            limit: size,
+            curr: page,
+            layout: ['count', 'prev', 'page', 'next', 'limit', 'refresh', 'skip'],
+            jump: function(obj, first) {
+                // obj包含了当前分页的所有参数，比如：
+                // obj.curr 当前页, obj.limit 每页数据量
+
+                // 首次不执行
+                if (!first) {
+                	page = obj.curr
+                	size = obj.limit
+                    // 根据当前页和每页数据量加载数据
+                    getCategoryList(page, size);
+                }
+            }
+        });
+    }
+</script>
+</html>

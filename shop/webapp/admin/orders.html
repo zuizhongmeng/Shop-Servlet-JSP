@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>订单管理</title>
+<link rel="stylesheet" href="./layui/css/layui.css">
+   <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+	<div style="float: right;">
+		<input type="text" class="layui-input" id="search-data"
+			style="width: 240px; float: right; margin-right: 200px" />
+		<button class="layui-btn" id="search-btn"
+			style="float: right; margin-right: -350px">搜索</button>
+	</div>
+	<div style="padding-top: 10px;">
+		<table class="layui-table" id="orderTable">
+			<thead>
+				<tr>
+					<th>订单号</th>
+					<th>下单时间</th>
+					<th>下单人</th>
+					<th>地址</th>
+					<th>电话</th>
+					<th>总价</th>
+					<th>操作</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+
+	<!-- 分页 -->
+	<div id="pagination" class="layui-row"></div>
+
+
+
+</body>
+<script type="text/javascript" src="./layui/jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="./layui/layui.js"></script>
+<script>
+	oid = "";
+	orderList = []
+	page = 1
+	size = 10
+	$(function() {
+		// 弹出层 显示表单
+		layui.use([ 'laypage', 'layer'], function() {
+			var layer = layui.layer;
+			 
+			// 这里定义全局变量，以便在其他地方使用
+	        window.laypage = layui.laypage;
+			
+	      	// 查询类别列表
+	        getOrderList(page,size);
+	        
+	        
+	     	// 绑定搜索按钮点击事件
+			$("#search-btn").click(function() {
+				oid = $('#search-data').val();
+				getOrderList(page,size);
+			});
+			
+			 // 使用事件委托来绑定删除事件
+	        $("#orderTable").on("click", ".delete-btn", function() {
+	            var oid = $(this).data("id");
+	            console.log(oid);
+	            // 弹出确认删除提示框
+	            layer.confirm('确定要删除吗？', {
+	                btn: ['确定', '取消'] // 按钮
+	            }, function(index) {
+	                // 点击确定按钮后的操作
+	                deleteByoid(oid).then(function(res) {
+	                    console.log(res);
+	                    if (res.code > 0) {
+	                        // 处理响应
+	                        layer.msg("删除成功");
+	                        // 查询类别列表
+	                        getOrderList(page, size);
+	                    } else {
+	                        // 处理响应
+	                        layer.msg("删除失败");
+	                    }
+	                });
+	                layer.close(index); // 关闭确认框
+	            }, function() {
+	                // 点击取消按钮后的操作
+	                layer.msg('取消删除');
+	            });
+	        });
+
+		});
+		
+		
+		
+		
+
+	})
+	
+	
+
+
+
+	// 根据id删除
+	function deleteByoid(oid) {
+
+		return new Promise(function(resolve, reject) {
+			$.ajax({
+				type : "POST",
+				url : "/shop/order/delete?oid=" + oid,
+				contentType : "application/json; charset=UTF-8",
+				dataType : 'json',
+				success : function(res) {
+					resolve(res);
+				},
+				error : function(xhr, errorMessage, e) {
+					reject(errorMessage);
+				}
+			});
+		})
+	}
+	
+	// 日期格式化
+	function formatDate(timestamp) {
+        var date = new Date(timestamp);
+        var year = date.getFullYear();
+        var month = ('0' + (date.getMonth() + 1)).slice(-2);
+        var day = ('0' + date.getDate()).slice(-2);
+        var hours = ('0' + date.getHours()).slice(-2);
+        var minutes = ('0' + date.getMinutes()).slice(-2);
+        var seconds = ('0' + date.getSeconds()).slice(-2);
+        return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+    }
+
+	// 查询订单列表
+	function getOrderList(page,size) {
+		$
+				.ajax({
+					url : "/shop/order/orderList?page="+page+"&size="+size, // 请求的地址，即要给那里发送请求
+					contentType : "application/json; charset=UTF-8",
+					data : { // 请求参数，有多个时以逗号分
+						oid : oid
+					},
+					type : 'post', // 请求方式，get、post
+					dataType : 'json', // 返回值类型， json、text等
+					success : function(res) { // 请求成功执行此方法，res为返回值，名称自定义
+						initPagination(res.total)
+						var orderList = res.list;
+						var tableBody = $("#orderTable tbody");
+						tableBody.empty(); // 清空表格
+						orderList.forEach(function(order, index) {
+					            var ordertime = new Date(order.ordertime).toLocaleString(); // 转换时间戳为字符串
+					            var row = `
+					                <tr data-index="${index}" class="order-row">
+					                    <td>${order.oid}</td>
+					                    <td>${ordertime}</td>
+					                    <td>${order.name}</td>
+					                    <td>${order.address}</td>
+					                    <td>${order.telephone}</td>
+					                    <td>${order.total}</td>
+					                    <td>
+					                    	<button class="layui-btn layui-btn-sm view-items">查看商品</button>
+					                    	<button class='layui-btn layui-btn-danger layui-btn-sm delete-btn' data-id="${order.oid}">删除</button>
+					                    </td>
+					                </tr>
+					                <tr data-index="${index}" class="order-items hidden">
+					                    <td colspan="7">
+					                        <table class="layui-table">
+					                            <thead>
+					                                <tr>
+					                                    <th>商品名称</th>
+					                                    <th>数量</th>
+					                                    <th>单价</th>
+					                                    <th>小计</th>
+					                                </tr>
+					                            </thead>
+					                            <tbody>
+					                                ${order.orderItems.map(item => `
+					                                    <tr>
+					                                        <td>${item.product.pname}</td>
+					                                        <td>${item.count}</td>
+					                                        <td>${item.product.shop_price}</td>
+					                                        <td>${item.subtotal}</td>
+					                                    </tr>
+					                                `).join('')}
+					                            </tbody>
+					                        </table>
+					                    </td>
+					                </tr>
+					            `;
+					            tableBody.append(row);
+					        });
+						
+						   // 添加查看商品按钮点击事件
+					        $(".view-items").click(function() {
+					            var index = $(this).closest("tr").data("index");
+					            $(`.order-items[data-index="${index}"]`).toggleClass("hidden");
+					        });
+						
+						
+					},
+					error : function(xhr, errorMessage, e) { //请求异常执行此方法，参数名不建议修改,可以不写这个函数
+						alert(errorMessage);
+					}
+				})
+	}
+	  // 初始化分页组件函数
+    function initPagination(total) {
+        window.laypage.render({
+            elem: 'pagination',
+            count: total, // 总记录数
+            limit: size,
+            curr: page,
+            layout: ['count', 'prev', 'page', 'next', 'limit', 'refresh', 'skip'],
+            jump: function(obj, first) {
+                // obj包含了当前分页的所有参数，比如：
+                // obj.curr 当前页, obj.limit 每页数据量
+
+                // 首次不执行
+                if (!first) {
+                	page = obj.curr
+                	size = obj.limit
+                    // 根据当前页和每页数据量加载数据
+                    getOrderList(page, size);
+                }
+            }
+        });
+    }
+</script>
+</html>

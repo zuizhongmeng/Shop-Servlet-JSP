@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>商城后台管理系统</title>
+  <link rel="stylesheet" href="./layui/css/layui.css">
+</head>
+<body class="layui-layout-body">
+<div class="layui-layout layui-layout-admin">
+  <div class="layui-header">
+    <div class="layui-logo">商城后台管理系统</div>
+
+    <ul class="layui-nav layui-layout-right">
+      <li class="layui-nav-item">
+        <a href="javascript:; "  id="userLink">
+          admin
+        </a>
+      </li>
+      <li class="layui-nav-item"><a href="#" id="logoutLink">退出</a></li>
+    </ul>
+  </div>
+  
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+      <ul class="layui-nav layui-nav-tree" lay-filter="test">
+        <li class="layui-nav-item"><a href="home.html" target="iframe">首页</a></li>
+        <li class="layui-nav-item"><a href="product.html" target="iframe">商品管理</a></li>
+        <li class="layui-nav-item"><a href="category.html" target="iframe">类别管理</a></li>
+        <li class="layui-nav-item"><a href="user.html" target="iframe">用户管理</a></li>
+        <li class="layui-nav-item"><a href="orders.html" target="iframe">订单管理</a></li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="layui-body">
+    <!-- 内容主体区域 -->
+    <div style="padding: 15px;height: 100%;">
+      <iframe width="100%" id="iframe" name="iframe" frameborder="0" src="home.html"></iframe>
+    </div>
+  </div>
+  
+  <div class="layui-footer">
+    <!-- 底部固定区域 -->
+    © shangcheng.com
+  </div>
+</div>
+<script src="./layui/layui.js"></script>
+<script type="text/javascript" src="./layui/jquery-1.8.3.min.js"></script>
+<script>
+//JavaScript代码区域
+$(function(){
+  layui.use('element', function(){
+    var element = layui.element;
+    var iframeid = document.getElementById("iframe"); //iframe id
+    if (document.getElementById){
+      iframeid.height = document.documentElement.clientHeight;
+    }
+    
+    // 强制链接在 iframe 中打开
+    $('ul.layui-nav a').on('click', function(e) {
+      e.preventDefault();
+      var url = $(this).attr('href');
+      $('#iframe').attr('src', url);
+    });
+  });
+  
+  
+  $('#logoutLink').on('click', function(e) {
+      e.preventDefault(); // 阻止默认链接行为
+
+      // 发起异步请求进行注销
+      $.ajax({
+          type: 'post', // 或者 'POST'，取决于你的注销 Servlet 方法
+          url: '/shop/adminServlet/logout',
+          contentType : "application/json; charset=UTF-8",
+		  dataType : 'json',
+          success: function(res) {
+        	  console.log(res)
+              // 注销成功后，重定向父窗口到登录页面
+              window.top.location.href = '/shop/admin/login.html';
+          },
+          error: function() {
+              alert('退出失败，请重试');
+          }
+      });
+  });
+  
+//从 sessionStorage 中获取用户名
+  var username = sessionStorage.getItem('loginNickname');
+  console.log(username)
+  if (username) {
+      // 更新用户名显示
+      $('#userLink').text(username);
+  } else {
+     
+  }
+  
+})
+</script>
+</body>
+</html>
